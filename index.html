@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Particle System</title>
+  <title>Enhanced Particle System</title>
   <style>
     body {
       margin: 0;
@@ -54,8 +54,18 @@
     button:hover {
       background-color: #16213e;
     }
-    .color-buttons {
+    .color-section {
       margin-top: 15px;
+    }
+    .color-heading {
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .color-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 15px;
     }
     .color-button {
       width: 30px;
@@ -63,8 +73,13 @@
       border-radius: 50%;
       border: 2px solid white;
       display: inline-block;
-      margin-right: 8px;
       cursor: pointer;
+    }
+    .option-container {
+      margin-top: 15px;
+    }
+    .checkbox-container {
+      margin-bottom: 8px;
     }
   </style>
 </head>
@@ -72,7 +87,7 @@
   <canvas id="canvas"></canvas>
   
   <div class="controls">
-    <h2>Particle System</h2>
+    <h2>Enhanced Particle System</h2>
     
     <div class="slider-container">
       <label for="particleCount">Particle Count:</label>
@@ -98,15 +113,55 @@
       <span id="speedValue" class="value-display">3</span>
     </div>
     
+    <div class="slider-container">
+      <label for="curviness">Curve Amount:</label>
+      <input type="range" id="curviness" min="0" max="100" value="30">
+      <span id="curvinessValue" class="value-display">30</span>
+    </div>
+    
+    <div class="checkbox-container">
+      <input type="checkbox" id="enableCurvedLines" checked>
+      <label for="enableCurvedLines">Enable Curved Lines</label>
+    </div>
+    
+    <div class="checkbox-container">
+      <input type="checkbox" id="multiColorParticles">
+      <label for="multiColorParticles">Multi-Colored Particles</label>
+    </div>
+    
     <button id="resetBtn">Reset</button>
     <button id="pauseBtn">Pause</button>
     
-    <div class="color-buttons">
-      <div class="color-button" style="background-color: #4CC9F0;" data-color="#4CC9F0"></div>
-      <div class="color-button" style="background-color: #F72585;" data-color="#F72585"></div>
-      <div class="color-button" style="background-color: #7209B7;" data-color="#7209B7"></div>
-      <div class="color-button" style="background-color: #4ECE3D;" data-color="#4ECE3D"></div>
-      <div class="color-button" style="background-color: #FFD166;" data-color="#FFD166"></div>
+    <div class="color-section">
+      <div class="color-heading">Particle Color:</div>
+      <div class="color-buttons" id="particleColors">
+        <div class="color-button" style="background-color: #4CC9F0;" data-color="#4CC9F0"></div>
+        <div class="color-button" style="background-color: #F72585;" data-color="#F72585"></div>
+        <div class="color-button" style="background-color: #7209B7;" data-color="#7209B7"></div>
+        <div class="color-button" style="background-color: #4ECE3D;" data-color="#4ECE3D"></div>
+        <div class="color-button" style="background-color: #FFD166;" data-color="#FFD166"></div>
+        <div class="color-button" style="background-color: #FF9E00;" data-color="#FF9E00"></div>
+        <div class="color-button" style="background-color: #FF5400;" data-color="#FF5400"></div>
+        <div class="color-button" style="background-color: #3A86FF;" data-color="#3A86FF"></div>
+        <div class="color-button" style="background-color: #8338EC;" data-color="#8338EC"></div>
+        <div class="color-button" style="background-color: #FB5607;" data-color="#FB5607"></div>
+      </div>
+    </div>
+    
+    <div class="color-section">
+      <div class="color-heading">Line Color:</div>
+      <div class="color-buttons" id="lineColors">
+        <div class="color-button" style="background-color: #4CC9F0;" data-color="#4CC9F0"></div>
+        <div class="color-button" style="background-color: #F72585;" data-color="#F72585"></div>
+        <div class="color-button" style="background-color: #7209B7;" data-color="#7209B7"></div>
+        <div class="color-button" style="background-color: #4ECE3D;" data-color="#4ECE3D"></div>
+        <div class="color-button" style="background-color: #FFD166;" data-color="#FFD166"></div>
+        <div class="color-button" style="background-color: #FF9E00;" data-color="#FF9E00"></div>
+        <div class="color-button" style="background-color: #FF5400;" data-color="#FF5400"></div>
+        <div class="color-button" style="background-color: #3A86FF;" data-color="#3A86FF"></div>
+        <div class="color-button" style="background-color: #8338EC;" data-color="#8338EC"></div>
+        <div class="color-button" style="background-color: #FB5607;" data-color="#FB5607"></div>
+      </div>
     </div>
   </div>
   
@@ -119,14 +174,24 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
+    // Available color palette
+    const colorPalette = [
+      '#4CC9F0', '#F72585', '#7209B7', '#4ECE3D', '#FFD166',
+      '#FF9E00', '#FF5400', '#3A86FF', '#8338EC', '#FB5607'
+    ];
+    
     // Configuration
     let config = {
       particleCount: 200,
       particleSize: 3,
       connectionDistance: 150,
       speed: 3,
-      color: '#4CC9F0',
-      paused: false
+      particleColor: '#4CC9F0',
+      lineColor: '#4CC9F0',
+      paused: false,
+      curviness: 30,
+      enableCurvedLines: true,
+      multiColorParticles: false
     };
     
     // Particles array
@@ -166,6 +231,11 @@
         this.baseX = x;
         this.baseY = y;
         this.density = (Math.random() * 30) + 1;
+        
+        // Assign random color if multicolor is enabled
+        this.color = config.multiColorParticles ? 
+          colorPalette[Math.floor(Math.random() * colorPalette.length)] : 
+          config.particleColor;
         
         // Random velocity
         this.vx = (Math.random() - 0.5) * config.speed;
@@ -209,7 +279,7 @@
       
       // Draw particle
       draw() {
-        ctx.fillStyle = config.color;
+        ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.closePath();
@@ -227,7 +297,7 @@
       }
     }
     
-    // Connect particles with lines
+    // Connect particles with lines (either straight or curved)
     function connect() {
       for (let a = 0; a < particles.length; a++) {
         for (let b = a; b < particles.length; b++) {
@@ -238,15 +308,57 @@
           if (distance < config.connectionDistance) {
             // Calculate opacity based on distance
             let opacity = 1 - (distance / config.connectionDistance);
-            ctx.strokeStyle = `rgba(${hexToRgb(config.color)}, ${opacity})`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(particles[a].x, particles[a].y);
-            ctx.lineTo(particles[b].x, particles[b].y);
-            ctx.stroke();
+            
+            if (config.enableCurvedLines && Math.random() > 0.6) {
+              // Draw curved line
+              drawCurvedLine(
+                particles[a].x, particles[a].y,
+                particles[b].x, particles[b].y,
+                config.curviness, opacity
+              );
+            } else {
+              // Draw straight line
+              ctx.strokeStyle = `rgba(${hexToRgb(config.lineColor)}, ${opacity})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(particles[a].x, particles[a].y);
+              ctx.lineTo(particles[b].x, particles[b].y);
+              ctx.stroke();
+            }
           }
         }
       }
+    }
+    
+    // Draw a curved line between two points
+    function drawCurvedLine(x1, y1, x2, y2, curvature, opacity) {
+      const midX = (x1 + x2) / 2;
+      const midY = (y1 + y2) / 2;
+      
+      // Calculate control point offset perpendicular to the line
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      
+      // Normalize and rotate 90 degrees
+      const nx = -dy / len;
+      const ny = dx / len;
+      
+      // Random direction and magnitude for control point
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const magnitude = (Math.random() * curvature) + 10;
+      
+      // Control point
+      const cpx = midX + nx * side * magnitude;
+      const cpy = midY + ny * side * magnitude;
+      
+      // Draw the curve
+      ctx.strokeStyle = `rgba(${hexToRgb(config.lineColor)}, ${opacity})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo(cpx, cpy, x2, y2);
+      ctx.stroke();
     }
     
     // Convert hex color to rgb
@@ -280,15 +392,20 @@
     const particleSizeSlider = document.getElementById('particleSize');
     const connectionDistanceSlider = document.getElementById('connectionDistance');
     const speedSlider = document.getElementById('speed');
+    const curvinessSlider = document.getElementById('curviness');
+    const enableCurvedLinesCheckbox = document.getElementById('enableCurvedLines');
+    const multiColorParticlesCheckbox = document.getElementById('multiColorParticles');
     const resetBtn = document.getElementById('resetBtn');
     const pauseBtn = document.getElementById('pauseBtn');
-    const colorButtons = document.querySelectorAll('.color-button');
+    const particleColorButtons = document.querySelectorAll('#particleColors .color-button');
+    const lineColorButtons = document.querySelectorAll('#lineColors .color-button');
     
     // Update displayed values
     const particleCountValue = document.getElementById('particleCountValue');
     const particleSizeValue = document.getElementById('particleSizeValue');
     const connectionDistanceValue = document.getElementById('connectionDistanceValue');
     const speedValue = document.getElementById('speedValue');
+    const curvinessValue = document.getElementById('curvinessValue');
     
     // Event listeners for sliders
     particleCountSlider.addEventListener('input', function() {
@@ -324,6 +441,31 @@
       }
     });
     
+    curvinessSlider.addEventListener('input', function() {
+      config.curviness = parseInt(this.value);
+      curvinessValue.textContent = this.value;
+    });
+    
+    // Checkboxes
+    enableCurvedLinesCheckbox.addEventListener('change', function() {
+      config.enableCurvedLines = this.checked;
+    });
+    
+    multiColorParticlesCheckbox.addEventListener('change', function() {
+      config.multiColorParticles = this.checked;
+      if (this.checked) {
+        // Assign random colors to existing particles
+        for (let particle of particles) {
+          particle.color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+        }
+      } else {
+        // Reset all particles to the selected color
+        for (let particle of particles) {
+          particle.color = config.particleColor;
+        }
+      }
+    });
+    
     // Reset button
     resetBtn.addEventListener('click', function() {
       init();
@@ -335,17 +477,34 @@
       this.textContent = config.paused ? 'Resume' : 'Pause';
     });
     
-    // Color buttons
-    colorButtons.forEach(button => {
+    // Particle color buttons
+    particleColorButtons.forEach(button => {
       button.addEventListener('click', function() {
-        config.color = this.getAttribute('data-color');
-        colorButtons.forEach(btn => btn.style.borderColor = 'white');
+        config.particleColor = this.getAttribute('data-color');
+        particleColorButtons.forEach(btn => btn.style.borderColor = 'white');
+        this.style.borderColor = '#FFC107';
+        
+        if (!config.multiColorParticles) {
+          // Update all particles to the new color
+          for (let particle of particles) {
+            particle.color = config.particleColor;
+          }
+        }
+      });
+    });
+    
+    // Line color buttons
+    lineColorButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        config.lineColor = this.getAttribute('data-color');
+        lineColorButtons.forEach(btn => btn.style.borderColor = 'white');
         this.style.borderColor = '#FFC107';
       });
     });
     
-    // Set the first color button as selected
-    colorButtons[0].style.borderColor = '#FFC107';
+    // Set the first color buttons as selected
+    particleColorButtons[0].style.borderColor = '#FFC107';
+    lineColorButtons[0].style.borderColor = '#FFC107';
     
     // Initialize and start animation
     init();
