@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Particle System</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #1a1a2e;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    .controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      color: white;
+      z-index: 10;
+    }
+    .slider-container {
+      margin-bottom: 10px;
+    }
+    label {
+      display: inline-block;
+      width: 150px;
+    }
+    input[type="range"] {
+      width: 150px;
+      vertical-align: middle;
+    }
+    .value-display {
+      display: inline-block;
+      width: 40px;
+      text-align: right;
+      margin-left: 10px;
+    }
+    button {
+      background-color: #0f3460;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #16213e;
+    }
+    .color-buttons {
+      margin-top: 15px;
+    }
+    .color-button {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid white;
+      display: inline-block;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  
+  <div class="controls">
+    <h2>Particle System</h2>
+    
+    <div class="slider-container">
+      <label for="particleCount">Particle Count:</label>
+      <input type="range" id="particleCount" min="50" max="500" value="200">
+      <span id="particleCountValue" class="value-display">200</span>
+    </div>
+    
+    <div class="slider-container">
+      <label for="particleSize">Particle Size:</label>
+      <input type="range" id="particleSize" min="1" max="10" value="3">
+      <span id="particleSizeValue" class="value-display">3</span>
+    </div>
+    
+    <div class="slider-container">
+      <label for="connectionDistance">Connection Distance:</label>
+      <input type="range" id="connectionDistance" min="50" max="300" value="150">
+      <span id="connectionDistanceValue" class="value-display">150</span>
+    </div>
+    
+    <div class="slider-container">
+      <label for="speed">Speed:</label>
+      <input type="range" id="speed" min="1" max="10" value="3">
+      <span id="speedValue" class="value-display">3</span>
+    </div>
+    
+    <button id="resetBtn">Reset</button>
+    <button id="pauseBtn">Pause</button>
+    
+    <div class="color-buttons">
+      <div class="color-button" style="background-color: #4CC9F0;" data-color="#4CC9F0"></div>
+      <div class="color-button" style="background-color: #F72585;" data-color="#F72585"></div>
+      <div class="color-button" style="background-color: #7209B7;" data-color="#7209B7"></div>
+      <div class="color-button" style="background-color: #4ECE3D;" data-color="#4ECE3D"></div>
+      <div class="color-button" style="background-color: #FFD166;" data-color="#FFD166"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Canvas setup
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Configuration
+    let config = {
+      particleCount: 200,
+      particleSize: 3,
+      connectionDistance: 150,
+      speed: 3,
+      color: '#4CC9F0',
+      paused: false
+    };
+    
+    // Particles array
+    let particles = [];
+    
+    // Mouse position
+    let mouse = {
+      x: null,
+      y: null,
+      radius: 150
+    };
+    
+    // Capture mouse movement
+    window.addEventListener('mousemove', function(event) {
+      mouse.x = event.x;
+      mouse.y = event.y;
+    });
+    
+    window.addEventListener('mouseout', function() {
+      mouse.x = null;
+      mouse.y = null;
+    });
+    
+    // Resize canvas when window resizes
+    window.addEventListener('resize', function() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      init();
+    });
+    
+    // Particle class
+    class Particle {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.size = config.particleSize;
+        this.baseX = x;
+        this.baseY = y;
+        this.density = (Math.random() * 30) + 1;
+        
+        // Random velocity
+        this.vx = (Math.random() - 0.5) * config.speed;
+        this.vy = (Math.random() - 0.5) * config.speed;
+      }
+      
+      // Update particle position
+      update() {
+        if (config.paused) return;
+        
+        // Mouse interaction
+        let dx = mouse.x - this.x;
+        let dy = mouse.y - this.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        let forceDirectionX = dx / distance;
+        let forceDirectionY = dy / distance;
+        
+        // Max distance, past which the force is 0
+        const maxDistance = mouse.radius;
+        let force = (maxDistance - distance) / maxDistance;
+        
+        // If we're close to the mouse, move away
+        if (distance < maxDistance && mouse.x !== null) {
+          this.x -= forceDirectionX * force * this.density;
+          this.y -= forceDirectionY * force * this.density;
+        } 
+        // Move based on velocity
+        else {
+          this.x += this.vx;
+          this.y += this.vy;
+          
+          // Bounce off edges
+          if (this.x < 0 || this.x > canvas.width) {
+            this.vx *= -1;
+          }
+          if (this.y < 0 || this.y > canvas.height) {
+            this.vy *= -1;
+          }
+        }
+      }
+      
+      // Draw particle
+      draw() {
+        ctx.fillStyle = config.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    
+    // Initialize particles
+    function init() {
+      particles = [];
+      for (let i = 0; i < config.particleCount; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        particles.push(new Particle(x, y));
+      }
+    }
+    
+    // Connect particles with lines
+    function connect() {
+      for (let a = 0; a < particles.length; a++) {
+        for (let b = a; b < particles.length; b++) {
+          let dx = particles[a].x - particles[b].x;
+          let dy = particles[a].y - particles[b].y;
+          let distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < config.connectionDistance) {
+            // Calculate opacity based on distance
+            let opacity = 1 - (distance / config.connectionDistance);
+            ctx.strokeStyle = `rgba(${hexToRgb(config.color)}, ${opacity})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(particles[a].x, particles[a].y);
+            ctx.lineTo(particles[b].x, particles[b].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    
+    // Convert hex color to rgb
+    function hexToRgb(hex) {
+      // Remove # if present
+      hex = hex.replace('#', '');
+      
+      // Parse the hex values
+      let r = parseInt(hex.substring(0, 2), 16);
+      let g = parseInt(hex.substring(2, 4), 16);
+      let b = parseInt(hex.substring(4, 6), 16);
+      
+      return `${r}, ${g}, ${b}`;
+    }
+    
+    // Animation loop
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+      }
+      
+      connect();
+      requestAnimationFrame(animate);
+    }
+    
+    // UI Controls
+    const particleCountSlider = document.getElementById('particleCount');
+    const particleSizeSlider = document.getElementById('particleSize');
+    const connectionDistanceSlider = document.getElementById('connectionDistance');
+    const speedSlider = document.getElementById('speed');
+    const resetBtn = document.getElementById('resetBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const colorButtons = document.querySelectorAll('.color-button');
+    
+    // Update displayed values
+    const particleCountValue = document.getElementById('particleCountValue');
+    const particleSizeValue = document.getElementById('particleSizeValue');
+    const connectionDistanceValue = document.getElementById('connectionDistanceValue');
+    const speedValue = document.getElementById('speedValue');
+    
+    // Event listeners for sliders
+    particleCountSlider.addEventListener('input', function() {
+      config.particleCount = parseInt(this.value);
+      particleCountValue.textContent = this.value;
+      init();
+    });
+    
+    particleSizeSlider.addEventListener('input', function() {
+      config.particleSize = parseInt(this.value);
+      particleSizeValue.textContent = this.value;
+      for (let particle of particles) {
+        particle.size = config.particleSize;
+      }
+    });
+    
+    connectionDistanceSlider.addEventListener('input', function() {
+      config.connectionDistance = parseInt(this.value);
+      connectionDistanceValue.textContent = this.value;
+    });
+    
+    speedSlider.addEventListener('input', function() {
+      config.speed = parseInt(this.value);
+      speedValue.textContent = this.value;
+      for (let particle of particles) {
+        // Update velocity while maintaining direction
+        let magnitude = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+        if (magnitude > 0) {
+          let direction = { x: particle.vx / magnitude, y: particle.vy / magnitude };
+          particle.vx = direction.x * config.speed * (Math.random() * 0.5 + 0.5);
+          particle.vy = direction.y * config.speed * (Math.random() * 0.5 + 0.5);
+        }
+      }
+    });
+    
+    // Reset button
+    resetBtn.addEventListener('click', function() {
+      init();
+    });
+    
+    // Pause button
+    pauseBtn.addEventListener('click', function() {
+      config.paused = !config.paused;
+      this.textContent = config.paused ? 'Resume' : 'Pause';
+    });
+    
+    // Color buttons
+    colorButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        config.color = this.getAttribute('data-color');
+        colorButtons.forEach(btn => btn.style.borderColor = 'white');
+        this.style.borderColor = '#FFC107';
+      });
+    });
+    
+    // Set the first color button as selected
+    colorButtons[0].style.borderColor = '#FFC107';
+    
+    // Initialize and start animation
+    init();
+    animate();
+  </script>
+</body>
+</html>
